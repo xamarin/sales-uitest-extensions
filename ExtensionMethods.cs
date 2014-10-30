@@ -1,15 +1,26 @@
 ﻿using System;
-using Xamarin.UITest.Android;
-using Xamarin.UITest.Queries;
-using Xamarin.UITest;
 using System.Linq;
 using System.Threading;
+using Xamarin.UITest;
+using Xamarin.UITest.Android;
+using Xamarin.UITest.Queries;
+using System.Linq.Expressions;
+using System.Text;
 
 namespace LinkedIn.Tests.Android
 {
 	public static class Extensions
 	{
 		public static void ScrollDownAndTap(this AndroidApp app, Func<AppQuery, AppQuery> lambda = null, string screenshot = null)
+		{
+			app.ScrollDownEnough(lambda);
+			app.Tap(lambda);
+
+			if(screenshot != null)
+				app.Screenshot(screenshot);
+		}
+
+		public static void ScrollDownAndTap(this AndroidApp app, string screenshot, Func<AppQuery, AppQuery> lambda = null)
 		{
 			app.ScrollDownEnough(lambda);
 
@@ -22,21 +33,37 @@ namespace LinkedIn.Tests.Android
 		/// <summary>
 		/// Incrementally scrolls down until the desired elements are found
 		/// </summary>
-		public static void ScrollDownEnough(this AndroidApp app, Func<AppQuery, AppQuery> lambda)
+		public static AppResult[] ScrollDownEnough(this AndroidApp app, Func<AppQuery, AppQuery> lambda, string screenshot = null)
 		{
 			AppResult rootView = null;
 			int count = 0;
 			int maxTries = 20;
 
-			while(app.Query(lambda).Length == 0 && count < maxTries)
+			AppResult[] lastTry;
+			while(count < maxTries)
 			{
+				lastTry = app.Query(lambda);
+
+				if(lastTry.Any())
+				{
+					if(screenshot != null)
+						app.Screenshot(screenshot);
+
+					return lastTry;
+				}
+
 				if(rootView == null)
-					rootView = app.Query(e => e.All()).First();
+				{
+					rootView = app.Query(e => e.All()).FirstOrDefault();
+
+					if(rootView == null)
+						throw new Exception("Unable to get root view");
+				}
 
 				//Will try to scroll +/-100 from the vertical center point
 				float gap = 100;
 
-				//Take into account where the syeahcreen is not large and the gap would be too big
+				//Take into account where the screen is not large and the gap would be too big
 				if(rootView.Rect.Height < gap * 2)
 					gap = rootView.Rect.Height / 4;
 
@@ -48,6 +75,30 @@ namespace LinkedIn.Tests.Android
 			{
 				throw new Exception("Unable to scroll down to find element");
 			}
+
+			return new AppResult[0];
+		}
+
+		public static void LogToDevice(this AndroidApp app, string text)
+		{
+			try
+			{
+				app.Invoke("*******Xamarin Log*******", text);
+			}
+			catch(Exception)
+			{
+			}
+		}
+
+		public static void LogToDevice(this AndroidApp app, Func<AppQuery, AppQuery> lambda = null)
+		{
+			if(lambda == null)
+			{
+				lambda = e => e.All();
+			}
+
+			var results = app.Query(lambda);
+			app.LogToDevice(results.ToString(true));
 		}
 
 		public static void WaitThenEnterText(this IApp app, Func<AppQuery, AppQuery> lambda, string text, string screenshot = null)
@@ -65,6 +116,12 @@ namespace LinkedIn.Tests.Android
 			app.Screenshot(screenshot);
 		}
 
+//		public static void ClearThenEnterText(this IApp app, Func<AppQuery, AppQuery> lambda, string text, string screenshot)
+//		{
+//			app.EnterText(lambda, text);
+//			app.Screenshot(screenshot);
+//		}
+
 		public static void Tap(this IApp app, string screenshot, Func<AppQuery, AppQuery> lambda)
 		{
 			app.Screenshot(screenshot);
@@ -77,7 +134,7 @@ namespace LinkedIn.Tests.Android
 			app.Screenshot(screenshot);
 		}
 
-		public static void WaitThenTapIfExists(this IApp app, Func<AppQuery, AppQuery> lambda, int timeout = 5)
+		public static void WaitThenTapIfExists(this IApp app, Func<AppQuery, AppQuery> lambda, int timeout = 5, string screenshot = null)
 		{
 			int count = 0;
 
@@ -89,13 +146,16 @@ namespace LinkedIn.Tests.Android
 
 			if(app.Query(lambda).Length > 0)
 			{
+				if(screenshot != null)
+					app.Screenshot(screenshot);
+
 				app.Tap(lambda);
 			}
 		}
 
-		public static void WaitThenTap(this IApp app, string screenshot, Func<AppQuery, AppQuery> lambda)
+		public static void WaitThenTap(this IApp app, string screenshot, Func<AppQuery, AppQuery> lambda, int seconds = 20)
 		{
-			app.WaitForElement(lambda);
+			app.WaitForElement(lambda, "Timed out waiting for element", TimeSpan.FromSeconds(seconds));
 
 			if(screenshot != null)
 				app.Screenshot(screenshot);
@@ -103,13 +163,38 @@ namespace LinkedIn.Tests.Android
 			app.Tap(lambda);
 		}
 
-		public static void WaitThenTap(this IApp app, Func<AppQuery, AppQuery> lambda, string screenshot = null)
+		public static void WaitThenTap(this IApp app, Func<AppQuery, AppQuery> lambda, string screenshot = null, int seconds = 20)
 		{
 			app.WaitForElement(lambda);
 			app.Tap(lambda);
 
 			if(screenshot != null)
 				app.Screenshot(screenshot);
+		}
+			
+		public static string ToString(this AppResult[] result, bool repl)
+		{
+			var sb = new StringBuilder();
+
+			foreach(var res in result)
+			{
+				var innerSb = new StringBuilder();
+				innerSb.AppendLine("{");
+				innerSb.AppendLine(string.Format("    Class        - {0}", res.Class));
+				innerSb.AppendLine(string.Format("    Description  - {0}", res.Description));
+
+				if(res.Text != null)
+					innerSb.AppendLine(string.Format("    Text         - {0}", res.Text));
+
+				innerSb.AppendLine(string.Format("    ID           - {0}", res.Id));
+				innerSb.AppendLine(string.Format("    Rect         - {0} x {1}, {2} x {3}", res.Rect.X, res.Rect.Y, res.Rect.Width, res.Rect.Height));
+				innerSb.AppendLine("}");
+				innerSb.AppendLine("");
+
+				sb.Append(innerSb.ToString());
+			}
+
+			return sb.ToString();
 		}
 	}
 }
