@@ -7,7 +7,7 @@ using Xamarin.UITest.Queries;
 using System.Linq.Expressions;
 using System.Text;
 
-namespace LinkedIn.Tests.Android
+namespace Xamarin.TestCloud.Extensions
 {
 	public static class Extensions
 	{
@@ -79,11 +79,13 @@ namespace LinkedIn.Tests.Android
 			return new AppResult[0];
 		}
 
-		public static void LogToDevice(this AndroidApp app, string text)
+		public static void LogToDevice(this AndroidApp app, string text, params object[] formatArgs)
 		{
 			try
 			{
-				app.Invoke("*******Xamarin Log*******", text);
+				var finalText = formatArgs.Length > 0 ? string.Format(text, formatArgs) : text;
+				Console.WriteLine(finalText);
+				app.Invoke("*******Xamarin Log*******", finalText);
 			}
 			catch(Exception)
 			{
@@ -116,11 +118,11 @@ namespace LinkedIn.Tests.Android
 			app.Screenshot(screenshot);
 		}
 
-//		public static void ClearThenEnterText(this IApp app, Func<AppQuery, AppQuery> lambda, string text, string screenshot)
-//		{
-//			app.EnterText(lambda, text);
-//			app.Screenshot(screenshot);
-//		}
+		//		public static void ClearThenEnterText(this IApp app, Func<AppQuery, AppQuery> lambda, string text, string screenshot)
+		//		{
+		//			app.EnterText(lambda, text);
+		//			app.Screenshot(screenshot);
+		//		}
 
 		public static void Tap(this IApp app, string screenshot, Func<AppQuery, AppQuery> lambda)
 		{
@@ -171,31 +173,33 @@ namespace LinkedIn.Tests.Android
 			if(screenshot != null)
 				app.Screenshot(screenshot);
 		}
-			
+
 		public static string ToString(this AppResult[] result, bool repl)
 		{
 			var sb = new StringBuilder();
+			var index = 0;
 
 			foreach(var res in result)
 			{
 				var innerSb = new StringBuilder();
 				innerSb.AppendLine("{");
-				innerSb.AppendLine(string.Format("    Class        - {0}", res.Class));
-				innerSb.AppendLine(string.Format("    Description  - {0}", res.Description));
+				innerSb.AppendLine(string.Format("    Index         - {0}", index));
+				innerSb.AppendLine(string.Format("    Class         - {0}", res.Class));
+				innerSb.AppendLine(string.Format("    Description   - {0}", res.Description));
 
 				if(res.Text != null)
-					innerSb.AppendLine(string.Format("    Text         - {0}", res.Text));
+					innerSb.AppendLine(string.Format("    Text           - {0}", res.Text));
 
-				innerSb.AppendLine(string.Format("    ID           - {0}", res.Id));
-				innerSb.AppendLine(string.Format("    Rect         - {0} x {1}, {2} x {3}", res.Rect.X, res.Rect.Y, res.Rect.Width, res.Rect.Height));
+				innerSb.AppendLine(string.Format("    ID            - {0}", res.Id));
+				innerSb.AppendLine(string.Format("    Rect          - {0} x {1}, {2} x {3}", res.Rect.X, res.Rect.Y, res.Rect.Width, res.Rect.Height));
 				innerSb.AppendLine("}");
 				innerSb.AppendLine("");
 
 				sb.Append(innerSb.ToString());
+				index++;
 			}
 
 			return sb.ToString();
 		}
 	}
 }
-
