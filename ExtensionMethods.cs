@@ -79,6 +79,7 @@ namespace Xamarin.TestCloud.Extensions
 			return new AppResult[0];
 		}
 
+		/// TEMPORARY HACK TO ALLOW LOGGING STRING DATA TO THE DEVICE LOG
 		public static void LogToDevice(this AndroidApp app, string text, params object[] formatArgs)
 		{
 			try
@@ -117,12 +118,6 @@ namespace Xamarin.TestCloud.Extensions
 			app.EnterText(lambda, text);
 			app.Screenshot(screenshot);
 		}
-
-		//		public static void ClearThenEnterText(this IApp app, Func<AppQuery, AppQuery> lambda, string text, string screenshot)
-		//		{
-		//			app.EnterText(lambda, text);
-		//			app.Screenshot(screenshot);
-		//		}
 
 		public static void Tap(this IApp app, string screenshot, Func<AppQuery, AppQuery> lambda)
 		{
