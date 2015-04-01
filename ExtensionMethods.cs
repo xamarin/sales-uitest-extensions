@@ -6,6 +6,8 @@ using Xamarin.UITest.Android;
 using Xamarin.UITest.Queries;
 using System.Linq.Expressions;
 using System.Text;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace Xamarin.TestCloud.Extensions
 {
@@ -30,14 +32,73 @@ namespace Xamarin.TestCloud.Extensions
 			app.Tap(lambda);
 		}
 
+		public static void ScrollUpAndTap(this AndroidApp app, Func<AppQuery, AppQuery> lambda = null, string screenshot = null)
+		{
+			app.ScrollUpEnough(lambda);
+			app.Tap(lambda);
+
+			if(screenshot != null)
+				app.Screenshot(screenshot);
+		}
+
+		public static void ScrollUpAndTap(this AndroidApp app, string screenshot, Func<AppQuery, AppQuery> lambda = null)
+		{
+			app.ScrollUpEnough(lambda);
+
+			if(screenshot != null)
+				app.Screenshot(screenshot);
+
+			app.Tap(lambda);
+		}
+
 		/// <summary>
 		/// Incrementally scrolls down until the desired elements are found
 		/// </summary>
-		public static AppResult[] ScrollDownEnough(this AndroidApp app, Func<AppQuery, AppQuery> lambda, string screenshot = null)
+		public static AppResult[] ScrollDownEnough(this IApp app, Func<AppQuery, AppQuery> lambda, string screenshot = null)
 		{
 			AppResult rootView = null;
 			int count = 0;
-			int maxTries = 20;
+			const int maxTries = 20;
+
+			AppResult[] lastTry;
+			while(count < maxTries)
+			{
+				lastTry = app.Query(lambda);
+
+				if(lastTry.Any())
+				{
+					if(screenshot != null)
+						app.Screenshot(screenshot);
+
+					return lastTry;
+				}
+
+				if(rootView == null)
+				{
+					rootView = app.Query(e => e.All()).FirstOrDefault();
+
+					if(rootView == null)
+						throw new Exception("Unable to get root view");
+				}
+
+				float gap = rootView.Rect.Height / 5;
+				app.DragCoordinates(rootView.Rect.CenterX, rootView.Rect.CenterY + gap, rootView.Rect.CenterX, rootView.Rect.CenterY - gap);
+				count++;
+			}
+
+			if(count == maxTries)
+			{
+				throw new Exception("Unable to scroll down to find element");
+			}
+
+			return new AppResult[0];
+		}
+
+		public static AppResult[] ScrollUpEnough(this IApp app, Func<AppQuery, AppQuery> lambda, string screenshot = null)
+		{
+			AppResult rootView = null;
+			int count = 0;
+			const int maxTries = 20;
 
 			AppResult[] lastTry;
 			while(count < maxTries)
@@ -61,13 +122,9 @@ namespace Xamarin.TestCloud.Extensions
 				}
 
 				//Will try to scroll +/-100 from the vertical center point
-				float gap = 100;
-
-				//Take into account where the screen is not large and the gap would be too big
-				if(rootView.Rect.Height < gap * 2)
-					gap = rootView.Rect.Height / 4;
-
-				app.DragCoordinates(rootView.Rect.CenterX, rootView.Rect.CenterY + gap, rootView.Rect.CenterX, rootView.Rect.CenterY - gap);
+				float gap = rootView.Rect.Height / 5;
+				//app.DragCoordinates(rootView.Rect.CenterX, rootView.Rect.CenterY - gap, rootView.Rect.CenterX, rootView.Rect.CenterY + gap);
+				app.ScrollUp();
 				count++;
 			}
 
